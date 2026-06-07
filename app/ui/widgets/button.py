@@ -34,8 +34,8 @@ class Button:
 
     def draw(self, surface):
         color = self.selected_color if self.selected else self.bg_color
-        pygame.draw.rect(surface, color, self.rect, border_radius=6)
-        pygame.draw.rect(surface, (200, 200, 200), self.rect, 2, border_radius=6)
+        pygame.draw.rect(surface, color, self.rect)
+        pygame.draw.rect(surface, (200, 200, 200), self.rect, 2)
 
         text_surface = self.font.render(self.text, True, self.fg_color)
         text_rect = text_surface.get_rect(center=self.rect.center)

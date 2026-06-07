@@ -1,8 +1,10 @@
+import os
 import pygame
 from ui.screen import Screen
 from ui.layout import *
 from ui.widgets import Button
 
+script_dir = os.path.dirname(os.path.abspath(__file__))
 
 class MainMenu(Screen):
     def __init__(self):
@@ -14,9 +16,10 @@ class MainMenu(Screen):
         labels = ["Pokedex", "Entralinked", "PKHex", "EonTimer", "Settings"]
         button_width = 180
         button_height = 56
-        start_x = HEADER.left + 14
-        start_y = HEADER.bottom + 24
         spacing = 18
+        total_height = len(labels) * button_height + (len(labels) - 1) * spacing
+        start_x = NAV.x + (NAV.width - button_width) // 2
+        start_y = NAV.y + (NAV.height - total_height) // 2
 
         for index, label in enumerate(labels):
             rect = pygame.Rect(
@@ -35,9 +38,10 @@ class MainMenu(Screen):
         pass
 
     def draw(self, surface):
-        font = pygame.font.SysFont(None, 50)
-        title = font.render("PokeHelper", True, (255, 255, 255))
-        surface.blit(title, (HEADER.left + 20, 10))
+        font = pygame.font.SysFont(None, 36)
+        header_img = pygame.image.load(script_dir + "/logo/" + THEME["logo"])
+        header_img_resized = pygame.transform.scale(header_img, (162, 50))
+        surface.blit(header_img_resized, (HEADER.left + 20, 0))
 
         for button in self.buttons:
             button.draw(surface)

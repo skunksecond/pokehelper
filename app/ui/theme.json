@@ -6,5 +6,6 @@
     "button_fg": [255, 255, 255],
     "button_bg": [255, 255, 255],
     "button_select": [255, 255, 255],
-    "outline": "#461a8a"
+    "outline": "#461a8a",
+    "logo": "bayleef logo noleaf w.png"
 }
