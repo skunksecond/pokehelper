@@ -8,6 +8,11 @@ script_dir = os.path.dirname(os.path.abspath(__file__))
 pygame.init()
 WIDTH = 800
 HEIGHT =  480 
+
+icon_image = pygame.image.load("app/ui/logo/bayleef icon.png")
+
+pygame.display.set_icon(icon_image)
+
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
 pygame.display.set_caption("Bayleef")
 
