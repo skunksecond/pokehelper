@@ -3,7 +3,8 @@ import pygame
 from ui.screen import Screen
 from ui.layout import *
 from ui.widgets import Button
-from eontimer import *
+from eontimer import start_eontimer
+from ui.set_screen import *
 
 script_dir = os.path.dirname(os.path.abspath(__file__))
 
@@ -33,7 +34,7 @@ class MainMenu(Screen):
             button = Button(rect, label)
 
             if label == "EonTimer":
-                button.callback = start_eontimer
+                button.callback = self._open_eontimer
             
             self.buttons.append(button)
 
@@ -73,6 +74,13 @@ class MainMenu(Screen):
         self.buttons[self.selected_index].set_selected(False)
         self.selected_index = (self.selected_index + delta) % len(self.buttons)
         self.buttons[self.selected_index].set_selected(True)
+
+    def _open_eontimer(self):
+        print("Opening EonTimer")
+        from ui.EonTimerScreen import EonTimerScreen
+        screen = EonTimerScreen()
+        set_screen(screen)
+        start_eontimer(exit_callback=screen._return_to_menu)
 
     def _activate_button(self, button):
         print(f"Selected: {button.text}")

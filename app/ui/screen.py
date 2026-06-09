@@ -7,3 +7,4 @@ class Screen:
 
     def handle_event(self, event):
         pass
+    
