@@ -50,8 +50,6 @@ class EonTimerScreen(Screen):
         self.exit_button.draw(surface)
 
     def _return_to_menu(self):
-        if self.done:
-            return
         self.done = True
         from ui.menu import MainMenu
         set_screen(MainMenu())

@@ -6,10 +6,6 @@ _SERVER_PROCESS = None
 _EXIT_CALLBACK = None
 
 
-def get_default_entralinked_url() -> str:
-    return "http://127.0.0.1"
-
-
 def get_jar_path() -> Path:
     return Path(__file__).resolve().parent / "third_party" / "entralinked" / "entralinked.jar"
 
