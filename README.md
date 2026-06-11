@@ -1,6 +1,6 @@
 # bayleef
 
-![alt text](https://raw.githubusercontent.com/skunksecond/bayleef/refs/heads/main/app/ui/logo/bayleef%20logo.png "bayleef logo")
+![alt text](https://raw.githubusercontent.com/skunksecond/bayleef/refs/heads/main/images/ss61026.png "bayleef logo")
 WIP small cyberdeck-like device based on the Raspberry Pi Zero 2W to help you with all of your Pokemon game related needs on the go 
 
 ![alt text](https://raw.githubusercontent.com/skunksecond/bayleef/refs/heads/main/images/ui%20as%20of%20june%209%2026.png "the UI and software as of June 9th, 2026")
