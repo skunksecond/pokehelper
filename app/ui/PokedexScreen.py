@@ -91,6 +91,35 @@ TYPE_CHART = {
     "fairy": {"fire": 0.5, "fighting": 2, "poison": 0.5, "dragon": 2, "dark": 2, "steel": 0.5},
 }
 
+TYPE_COLORS = {
+    "normal": (168, 167, 122),
+    "fire": (238, 129, 48),
+    "water": (99, 144, 240),
+    "electric": (247, 208, 44),
+    "grass": (122, 199, 76),
+    "ice": (150, 217, 214),
+    "fighting": (194, 46, 40),
+    "poison": (163, 62, 161),
+    "ground": (226, 191, 101),
+    "flying": (169, 143, 243),
+    "psychic": (249, 85, 135),
+    "bug": (166, 185, 26),
+    "rock": (182, 161, 54),
+    "ghost": (115, 87, 151),
+    "dragon": (111, 53, 252),
+    "dark": (112, 87, 70),
+    "steel": (183, 183, 206),
+    "fairy": (214, 133, 173),
+}
+
+SUMMARY_PANEL_HEIGHT = 224
+STATS_PANEL_HEIGHT = 208
+EV_PANEL_HEIGHT = 96
+TRAITS_PANEL_HEIGHT = 164
+EFFECTIVENESS_PANEL_MIN_HEIGHT = 170
+EVOLUTION_PANEL_HEIGHT = 134
+MOVES_PANEL_HEIGHT = 220
+
 
 def theme_color(name: str) -> pygame.Color:
     return pygame.Color(THEME[name])
@@ -295,8 +324,10 @@ class PokedexScreen(Screen):
         self.generation_menu_open = False
         self.main_content_height = 0
         self.entry_scroll = 0
+        self.evolution_scroll = 0
         self.move_scrolls = {"level-up": 0, "machine": 0}
         self.entry_scroll_meta = {"content_height": 0, "viewport_height": 0}
+        self.evolution_scroll_meta = {"content_height": 0, "viewport_height": 0}
         self.move_scroll_meta = {
             "level-up": {"content_height": 0, "viewport_height": 0},
             "machine": {"content_height": 0, "viewport_height": 0},
@@ -376,6 +407,9 @@ class PokedexScreen(Screen):
                 return
             if self._entry_scroll_rect().collidepoint(mouse_pos):
                 self._scroll_entry_panel(-event.y * 28)
+                return
+            if self._evolution_scroll_rect().collidepoint(mouse_pos):
+                self._scroll_evolution_panel(-event.y * 28)
                 return
             for method in ("level-up", "machine"):
                 if self._move_scroll_rect(method).collidepoint(mouse_pos):
@@ -512,16 +546,27 @@ class PokedexScreen(Screen):
             return surface, 140
 
         details = self._load_pokemon_details(selected.pokemon_id, GENERATION_ORDER[self.generation_index][0])
-        content_height = 1200
+        effectiveness_height = self._effectiveness_panel_height(width, details)
+        content_height = (
+            SUMMARY_PANEL_HEIGHT
+            + STATS_PANEL_HEIGHT
+            + EV_PANEL_HEIGHT
+            + TRAITS_PANEL_HEIGHT
+            + effectiveness_height
+            + EVOLUTION_PANEL_HEIGHT
+            + MOVES_PANEL_HEIGHT
+            + 80
+        )
         surface = pygame.Surface((width, content_height), pygame.SRCALPHA)
         y = 0
 
-        y = self._draw_summary_panel(surface, pygame.Rect(0, y, width, 224), details) + 10
-        y = self._draw_stats_panel(surface, pygame.Rect(0, y, width, 208), details) + 10
-        y = self._draw_traits_panel(surface, pygame.Rect(0, y, width, 164), details) + 10
-        y = self._draw_effectiveness_panel(surface, pygame.Rect(0, y, width, 132), details) + 10
-        y = self._draw_evolution_panel(surface, pygame.Rect(0, y, width, 122), details) + 10
-        y = self._draw_moves_panel(surface, pygame.Rect(0, y, width, 220), details) + 10
+        y = self._draw_summary_panel(surface, pygame.Rect(0, y, width, SUMMARY_PANEL_HEIGHT), details) + 10
+        y = self._draw_stats_panel(surface, pygame.Rect(0, y, width, STATS_PANEL_HEIGHT), details) + 10
+        y = self._draw_ev_yield_panel(surface, pygame.Rect(0, y, width, EV_PANEL_HEIGHT), details) + 10
+        y = self._draw_traits_panel(surface, pygame.Rect(0, y, width, TRAITS_PANEL_HEIGHT), details) + 10
+        y = self._draw_effectiveness_panel(surface, pygame.Rect(0, y, width, effectiveness_height), details) + 10
+        y = self._draw_evolution_panel(surface, pygame.Rect(0, y, width, EVOLUTION_PANEL_HEIGHT), details) + 10
+        y = self._draw_moves_panel(surface, pygame.Rect(0, y, width, MOVES_PANEL_HEIGHT), details) + 10
 
         return surface.subsurface(pygame.Rect(0, 0, width, y)).copy(), y
 
@@ -684,38 +729,80 @@ class PokedexScreen(Screen):
 
         return rect.bottom
 
+    def _draw_ev_yield_panel(self, surface, rect, details):
+        self._draw_panel(surface, rect, "EV Yield")
+        total = sum(details["ev_yields"].values())
+        total_surface = self.section_font.render(f"Total: {total}", True, self.text_color)
+        surface.blit(total_surface, total_surface.get_rect(center=(rect.centerx, rect.y + 42)))
+
+        labels = [
+            ("hp", "HP", (160, 235, 90)),
+            ("attack", "Atk", (255, 222, 95)),
+            ("defense", "Def", (255, 170, 92)),
+            ("special-attack", "Sp.Atk", (99, 206, 242)),
+            ("special-defense", "Sp.Def", (122, 141, 232)),
+            ("speed", "Speed", (211, 97, 215)),
+        ]
+        gap = 6
+        box_width = (rect.width - 24 - gap * 5) // 6
+        x = rect.x + 12
+        for stat_key, label, color in labels:
+            box = pygame.Rect(x, rect.y + 54, box_width, 30)
+            pygame.draw.rect(surface, color, box, border_radius=9)
+            pygame.draw.rect(surface, blend(color, (0, 0, 0), 0.35), box, 1, border_radius=9)
+            value = str(details["ev_yields"].get(stat_key, 0))
+            value_surface = self.small_font.render(value, True, (25, 25, 25))
+            label_surface = self.small_font.render(label, True, (25, 25, 25))
+            surface.blit(value_surface, value_surface.get_rect(center=(box.centerx, box.y + 10)))
+            surface.blit(label_surface, label_surface.get_rect(center=(box.centerx, box.y + 22)))
+            x += box_width + gap
+        return rect.bottom
+
     def _draw_effectiveness_panel(self, surface, rect, details):
         self._draw_panel(surface, rect, "Type Matchups")
-        groups = self._type_effectiveness_groups(details["types"])
-        columns = [
-            ("4x", groups["4x"]),
-            ("2x", groups["2x"]),
-            ("1/2x", groups["1/2x"]),
-            ("1/4x", groups["1/4x"]),
-            ("0x", groups["0x"]),
-        ]
-
-        column_width = (rect.width - 32) // len(columns)
-        x = rect.x + 12
-        for title, values in columns:
-            box = pygame.Rect(x, rect.y + 42, column_width - 6, 76)
-            self._draw_inner_box(surface, box)
-            title_surface = self.small_font.render(title, True, self.text_color)
-            surface.blit(title_surface, (box.x + 8, box.y + 6))
-            text = ", ".join(prettify_slug(item) for item in values) if values else "-"
-            draw_wrapped_text(surface, text, self.tiny_font, self.text_color, pygame.Rect(box.x + 8, box.y + 26, box.width - 16, box.height - 32), line_gap=1)
-            x += column_width
-
+        rows = self._effectiveness_rows(details)
+        y = rect.y + 36
+        pill_rect_width = rect.width - 170
+        for label, items in rows:
+            row_height = max(42, self._measure_type_pills_height(pill_rect_width, items) + 10)
+            row_rect = pygame.Rect(rect.x + 8, y, rect.width - 16, row_height)
+            pygame.draw.rect(surface, blend(self.panel_bg[:3], (255, 255, 255), 0.14), row_rect, border_radius=10)
+            pygame.draw.rect(surface, self.panel_border, row_rect, 1, border_radius=10)
+            label_surface = self.small_font.render(label + ":", True, self.text_color)
+            surface.blit(label_surface, (row_rect.x + 10, row_rect.y + 10))
+            self._draw_type_pills(surface, pygame.Rect(row_rect.x + 145, row_rect.y + 5, row_rect.width - 154, row_rect.height - 10), items)
+            y += row_height + 4
         return rect.bottom
 
     def _draw_evolution_panel(self, surface, rect, details):
         self._draw_panel(surface, rect, "Evolution")
         entries = details["evolution_lines"] or ["No evolution data available."]
-        y = rect.y + 42
-        for entry in entries[:4]:
-            line_rect = pygame.Rect(rect.x + 12, y, rect.width - 24, 18)
+        box = pygame.Rect(rect.x + 12, rect.y + 42, rect.width - 24, rect.height - 54)
+        self._draw_inner_box(surface, box)
+        inner_rect = box.inflate(-8, -8)
+        viewport_rect = pygame.Rect(inner_rect.x, inner_rect.y, inner_rect.width - 10, inner_rect.height)
+        line_height = self.small_font.get_height() + 4
+        content_height = max(viewport_rect.height, len(entries) * line_height)
+        self.evolution_scroll_meta = {
+            "content_height": content_height,
+            "viewport_height": viewport_rect.height,
+        }
+        self.evolution_scroll = clamp(self.evolution_scroll, 0, max(0, content_height - viewport_rect.height))
+        clip_before = surface.get_clip()
+        surface.set_clip(viewport_rect)
+        y = viewport_rect.y - self.evolution_scroll
+        for entry in entries:
+            line_rect = pygame.Rect(viewport_rect.x, y, viewport_rect.width, self.small_font.get_height())
             draw_wrapped_text(surface, entry, self.small_font, self.text_color, line_rect, line_gap=0)
-            y += 22
+            y += line_height
+        surface.set_clip(clip_before)
+        self._draw_scrollbar(
+            surface,
+            pygame.Rect(box.right - 12, box.y + 6, 8, box.height - 12),
+            self.evolution_scroll,
+            content_height,
+            viewport_rect.height,
+        )
         return rect.bottom
 
     def _draw_moves_panel(self, surface, rect, details):
@@ -847,6 +934,77 @@ class PokedexScreen(Screen):
             content_height,
             viewport_rect.height,
         )
+
+    def _draw_type_pills(self, surface, rect, items):
+        if not items:
+            empty = self.small_font.render("-", True, self.subtle_text)
+            surface.blit(empty, (rect.x, rect.y + (rect.height - empty.get_height()) // 2))
+            return
+
+        clip_before = surface.get_clip()
+        surface.set_clip(rect)
+        x = rect.x
+        y = rect.y
+        row_height = 26
+        gap_x = 6
+        gap_y = 5
+        for type_name, multiplier in items:
+            label = prettify_slug(type_name)
+            label_width = self.small_font.size(label)[0]
+            badge_width = self.tiny_font.size(multiplier)[0] + 16
+            pill_width = label_width + badge_width + 26
+            if x + pill_width > rect.right and x > rect.x:
+                x = rect.x
+                y += row_height + gap_y
+            pill_rect = pygame.Rect(x, y, pill_width, row_height)
+            fill = TYPE_COLORS.get(type_name, self.panel_header_bg)
+            pygame.draw.rect(surface, fill, pill_rect, border_radius=13)
+            pygame.draw.rect(surface, blend(fill, (0, 0, 0), 0.4), pill_rect, 1, border_radius=13)
+            text_surface = self.small_font.render(label, True, (250, 250, 250))
+            surface.blit(text_surface, (pill_rect.x + 12, pill_rect.y + 5))
+            badge_rect = pygame.Rect(pill_rect.right - badge_width - 6, pill_rect.y + 3, badge_width, pill_rect.height - 6)
+            pygame.draw.rect(surface, (250, 250, 250), badge_rect, border_radius=10)
+            pygame.draw.rect(surface, blend(fill, (0, 0, 0), 0.4), badge_rect, 1, border_radius=10)
+            badge_surface = self.tiny_font.render(multiplier, True, (30, 30, 30))
+            surface.blit(badge_surface, badge_surface.get_rect(center=badge_rect.center))
+            x += pill_width + gap_x
+        surface.set_clip(clip_before)
+
+    def _measure_type_pills_height(self, width: int, items) -> int:
+        if not items:
+            return self.small_font.get_height()
+
+        x = 0
+        y = 0
+        row_height = 26
+        gap_x = 6
+        gap_y = 5
+        for type_name, multiplier in items:
+            label = prettify_slug(type_name)
+            label_width = self.small_font.size(label)[0]
+            badge_width = self.tiny_font.size(multiplier)[0] + 16
+            pill_width = label_width + badge_width + 26
+            if x + pill_width > width and x > 0:
+                x = 0
+                y += row_height + gap_y
+            x += pill_width + gap_x
+        return y + row_height
+
+    def _effectiveness_rows(self, details):
+        groups = self._type_effectiveness_groups(details["types"])
+        return [
+            ("Damaged normally by", [(name, "1x") for name in groups["1x"]]),
+            ("Weak to", [(name, "4x") for name in groups["4x"]] + [(name, "2x") for name in groups["2x"]]),
+            ("Immune to", [(name, "0x") for name in groups["0x"]]),
+            ("Resistant to", [(name, "1/4x") for name in groups["1/4x"]] + [(name, "1/2x") for name in groups["1/2x"]]),
+        ]
+
+    def _effectiveness_panel_height(self, width: int, details) -> int:
+        total_height = 44
+        pill_rect_width = width - 170
+        for _, items in self._effectiveness_rows(details):
+            total_height += max(42, self._measure_type_pills_height(pill_rect_width, items) + 10) + 4
+        return max(EFFECTIVENESS_PANEL_MIN_HEIGHT, total_height + 6)
 
     def _draw_panel(self, surface, rect, title: str):
         pygame.draw.rect(surface, self.panel_bg, rect, border_radius=8)
@@ -1128,6 +1286,13 @@ class PokedexScreen(Screen):
                 (pokemon_id,),
             ).fetchall()
         }
+        ev_yields = {
+            row["stat_name"]: row["ev_yield"]
+            for row in self.conn.execute(
+                "SELECT stat_name, ev_yield FROM pokemon_stats WHERE pokemon_id = ?",
+                (pokemon_id,),
+            ).fetchall()
+        }
         egg_groups = [
             row["egg_group_name"]
             for row in self.conn.execute(
@@ -1249,6 +1414,7 @@ class PokedexScreen(Screen):
             "types": types,
             "abilities": abilities,
             "stats": stats,
+            "ev_yields": ev_yields,
             "egg_groups": egg_groups,
             "flavor_text": flavor_text,
             "versions": versions,
@@ -1331,12 +1497,15 @@ class PokedexScreen(Screen):
                 groups["4x"].append(type_name)
             elif multiplier == 2:
                 groups["2x"].append(type_name)
+            elif multiplier == 1:
+                groups.setdefault("1x", []).append(type_name)
             elif multiplier == 0.5:
                 groups["1/2x"].append(type_name)
             elif multiplier == 0.25:
                 groups["1/4x"].append(type_name)
             elif multiplier == 0:
                 groups["0x"].append(type_name)
+        groups.setdefault("1x", [])
         return groups
 
     def _nav_list_rect(self):
@@ -1353,6 +1522,7 @@ class PokedexScreen(Screen):
 
     def _reset_detail_scrolls(self):
         self.entry_scroll = 0
+        self.evolution_scroll = 0
         self.move_scrolls = {"level-up": 0, "machine": 0}
 
     def _entry_scroll_rect(self):
@@ -1367,13 +1537,29 @@ class PokedexScreen(Screen):
         view_rect = self._main_view_rect()
         content_x = view_rect.x + 6
         content_y = view_rect.y + 6 - self.main_scroll
-        moves_rect_y = 224 + 10 + 208 + 10 + 164 + 10 + 132 + 10 + 122 + 10
+        selected = self._selected_item()
+        details = self._load_pokemon_details(selected.pokemon_id, GENERATION_ORDER[self.generation_index][0]) if selected else {"types": []}
+        effectiveness_height = self._effectiveness_panel_height(view_rect.width - 18, details)
+        moves_rect_y = SUMMARY_PANEL_HEIGHT + 10 + STATS_PANEL_HEIGHT + 10 + EV_PANEL_HEIGHT + 10 + TRAITS_PANEL_HEIGHT + 10 + effectiveness_height + 10 + EVOLUTION_PANEL_HEIGHT + 10
         moves_rect = pygame.Rect(content_x, content_y + moves_rect_y, view_rect.width - 18, 220)
         if method == "level-up":
             box = pygame.Rect(moves_rect.x + 12, moves_rect.y + 42, moves_rect.width // 2 - 16, moves_rect.height - 54)
         else:
             box = pygame.Rect(moves_rect.x + moves_rect.width // 2 + 4, moves_rect.y + 42, moves_rect.width // 2 - 16, moves_rect.height - 54)
         return pygame.Rect(box.x, box.y + 18, box.width - 10, box.height - 18)
+
+    def _evolution_scroll_rect(self):
+        view_rect = self._main_view_rect()
+        content_x = view_rect.x + 6
+        content_y = view_rect.y + 6 - self.main_scroll
+        selected = self._selected_item()
+        details = self._load_pokemon_details(selected.pokemon_id, GENERATION_ORDER[self.generation_index][0]) if selected else {"types": []}
+        effectiveness_height = self._effectiveness_panel_height(view_rect.width - 18, details)
+        evolution_y = SUMMARY_PANEL_HEIGHT + 10 + STATS_PANEL_HEIGHT + 10 + EV_PANEL_HEIGHT + 10 + TRAITS_PANEL_HEIGHT + 10 + effectiveness_height + 10
+        rect = pygame.Rect(content_x, content_y + evolution_y, view_rect.width - 18, EVOLUTION_PANEL_HEIGHT)
+        box = pygame.Rect(rect.x + 12, rect.y + 42, rect.width - 24, rect.height - 54)
+        inner_rect = box.inflate(-8, -8)
+        return pygame.Rect(inner_rect.x, inner_rect.y, inner_rect.width - 10, inner_rect.height)
 
     def _scroll_entry_panel(self, delta):
         meta = self.entry_scroll_meta
@@ -1384,6 +1570,11 @@ class PokedexScreen(Screen):
         meta = self.move_scroll_meta[method]
         max_scroll = max(0, meta["content_height"] - meta["viewport_height"])
         self.move_scrolls[method] = clamp(self.move_scrolls[method] + delta, 0, max_scroll)
+
+    def _scroll_evolution_panel(self, delta):
+        meta = self.evolution_scroll_meta
+        max_scroll = max(0, meta["content_height"] - meta["viewport_height"])
+        self.evolution_scroll = clamp(self.evolution_scroll + delta, 0, max_scroll)
 
     def _return_to_menu(self):
         from ui.menu import MainMenu
